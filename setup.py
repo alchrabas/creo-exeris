@@ -8,6 +8,7 @@ setup(
     install_requires=[
         "scipy==1.1.0",
         "matplotlib==3.0.1",
+        "shapely==1.6.4",
     ],
     author='Aleksander Chrabaszcz',
     author_email='',
