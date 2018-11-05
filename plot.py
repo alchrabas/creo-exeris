@@ -18,10 +18,17 @@ def plot_regions(world, to_file=False):
     ax.set_xlim([0., 1.])
     ax.set_ylim([0., 1.])
 
-    _plot(to_file)
+    _display(to_file)
 
 
-def plot_hypsometric(world, heights, to_file=False):
+def plot_hypsometric(world, to_file=False):
+    plot_polygons(world)
+    plot_mountain_chains(world)
+
+    _display(to_file)
+
+
+def plot_polygons(world):
     HYPSOMETRIC_COLORS = collections.OrderedDict([
         (0.9, "#e42423"),
         (0.8, "#e5452b"),
@@ -29,8 +36,8 @@ def plot_hypsometric(world, heights, to_file=False):
         (0.5, "#f5b26b"),
         (0.4, "#ffe64c"),
         (0.3, "#f6ee81"),
-        (0.2, "#76b648"),
-        (0.0, "#bee3eb"),
+        (0.0, "#76b648"),
+        (-0.2, "#bee3eb"),
         (-1, "#71c7d6"),
     ])
 
@@ -41,19 +48,23 @@ def plot_hypsometric(world, heights, to_file=False):
 
     fig = plt.figure()
     ax = fig.gca()
-
     for region_id, poly_vertices in enumerate(world.vertices):
-        height = heights[region_id]
+        height = world.heights[region_id]
         hex_color = color_for_height(height)
         vertices = np.append(poly_vertices, [poly_vertices[0, :]], axis=0)
         ax.fill(vertices[:, 0], vertices[:, 1], hex_color)
 
-    _plot(to_file)
+
+def plot_mountain_chains(world):
+    for terrain in [t for t in world.terrains if t.terrain_name == "mountains"]:
+        xes = [p[0] for p in terrain.center_line.coords]
+        yes = [p[1] for p in terrain.center_line.coords]
+        plt.plot(xes, yes, color="purple")
 
 
-def _plot(to_file):
-    if to_file:
-        plt.savefig("bounded_voronoi.png")
-    else:
+def _display(only_to_file):
+    plt.savefig("bounded_voronoi.png")
+
+    if not only_to_file:
         plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
