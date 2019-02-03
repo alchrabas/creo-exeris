@@ -196,7 +196,7 @@ def intersects_with_other_mountain_chains(
         world: World):
     for existing_chain in existing_chains:
         distance = candidate_chain.line.distance(existing_chain.line)
-        approx_region_diameter = 1.0 / math.sqrt(world.regions_count)
+        approx_region_diameter = 1.2 / math.sqrt(world.regions_count)
 
         candidate_chain_over_min_height = (candidate_chain.height - MIN_MOUNTAIN_HEIGHT)
         existing_chain_over_min_height = (existing_chain.height - MIN_MOUNTAIN_HEIGHT)
@@ -250,3 +250,15 @@ def _move_point_farther_away(border_point, second_point, poly):
     intersection = Point(second_point[0] + (intersection.x - second_point[0]) * 1.001,
                          second_point[1] + (intersection.y - second_point[1]) * 1.001)
     return intersection
+
+
+def create_precipitation_map(world: World):
+    clouds_count = round(math.sqrt(world.regions_count))
+    regions_sorted_by_x = sorted(enumerate(world.center_points), key=lambda id_and_point: id_and_point[1].x)
+    regions_with_initial_clouds = [x[0] for x in regions_sorted_by_x[:clouds_count]]
+    print(regions_with_initial_clouds)
+    world.precipitation = np.full(world.regions_count, 0.0)
+    for x in regions_with_initial_clouds:
+        world.precipitation[x] = 1.0
+
+    return None

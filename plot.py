@@ -28,6 +28,13 @@ def plot_hypsometric(world, to_file=False):
     _display(to_file)
 
 
+def plot_with_precipitation(world):
+    fig = plt.figure()
+    ax = fig.gca()
+
+    ax.plot(world.centers[:, 0], world.centers[:, 1], 'b.')
+
+
 def plot_polygons(world):
     HYPSOMETRIC_COLORS = collections.OrderedDict([
         (0.9, "#e42423"),
