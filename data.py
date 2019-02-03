@@ -1,75 +1,86 @@
-import collections
 import itertools
-import math
-import random
-from typing import List
+from typing import List, Tuple, Dict, Set
 
-import numpy as np
 from shapely.geometry import Polygon, Point, LineString
+
+MIN_MOUNTAIN_HEIGHT = 0.6
+
+RegionId = int
+VertexId = int
+
+Pos = Tuple[float, float]
 
 
 class World:
-    def __init__(self, vertices, neighbours, centers, center_points, polygons):
-        self.vertices = vertices
-        self.neighbours = neighbours
-        self.centers = centers
-        self.center_points = center_points
-        self.regions_count = len(centers)
-        self.polygons = polygons
-        self.heights = None
-        self.terrains: List[TerrainGroup] = None
-        self.rivers = None
+    def __init__(
+            self,
+            center_by_region: Dict[RegionId, Pos],
+            regions_touching_region: Dict[RegionId, Set[RegionId]],
+            vertices_by_region: Dict[RegionId, List[VertexId]],
+            vertices_touching_vertex: Dict[VertexId, Set[VertexId]],
+            regions_touching_vertex: Dict[VertexId, Set[RegionId]],
+            polygon_by_region: Dict[RegionId, Polygon]
+    ):
+        self.center_by_region = center_by_region
+        self.vertices_by_region = vertices_by_region
+        self.polygon_by_region = polygon_by_region
+        self.regions_touching_region = regions_touching_region
+        self.vertices_touching_vertex = vertices_touching_vertex
+        self.regions_touching_vertex = regions_touching_vertex
+        self.regions_count = len(center_by_region)
+        self.vertices_count = len(regions_touching_vertex)
+        self.height_by_vertex: Dict[VertexId, float] = None
+        self.height_by_region: Dict[RegionId, float] = None
+        self.terrain_by_region: Dict[RegionId, TerrainGroup] = None
+        self.terrain_blobs: List[TerrainGroup] = None
+        self.rivers: List[List[VertexId]] = None
         self.mountain_chains = None
 
 
-def convert_to_world(vor):
-    regions_adjacent_to_vertex = {}
-    neighbours = {}
-    vertices = {}
-    polygons = {}
-    for region, region_vertices in enumerate(vor.filtered_regions):
-        for vertex in region_vertices:
-            regions_adjacent_to_vertex[vertex] = regions_adjacent_to_vertex.get(vertex, []) + [region]
-        vertices[region] = vor.vertices[region_vertices, :]
-        polygons[region] = Polygon(vertices[region])
+def convert_to_world(np_vertices_by_region, np_center_by_region, np_vertices):
+    polygon_by_region = {}
+    regions_touching_vertex, vertices_by_region = _calculate_regions_touching_vertex_and_vertices_by_region(np_vertices,
+                                                                                                            np_vertices_by_region)
+    for region_id in vertices_by_region:
+        polygon_by_region[region_id] = Polygon(vertices_by_region[region_id])
+    regions_touching_region = _calculate_region_neighbours(regions_touching_vertex)
+    vertices_touching_vertex = _calculate_neighbouring_vertices(np_vertices_by_region)
 
-    for vertex, regions in regions_adjacent_to_vertex.items():
+    center_by_region = {k: v for k, v in enumerate(np_center_by_region)}
+
+    return World(center_by_region, regions_touching_region, vertices_by_region, vertices_touching_vertex,
+                 regions_touching_vertex, polygon_by_region)
+
+
+def _calculate_regions_touching_vertex_and_vertices_by_region(np_vertices, np_vertices_by_region):
+    regions_touching_vertex = {}
+    vertices_by_region = {}
+    for region_id, region_vertices in enumerate(np_vertices_by_region):
+        for vertex in region_vertices:
+            regions_touching_vertex[vertex] = regions_touching_vertex.get(vertex, set()).union({region_id})
+        vertices_by_region[region_id] = np_vertices[region_vertices, :].tolist()
+    return regions_touching_vertex, vertices_by_region
+
+
+def _calculate_region_neighbours(regions_touching_vertex):
+    neighbours_by_region = {k: set() for k, _ in enumerate(regions_touching_vertex)}
+    for vertex, regions in regions_touching_vertex.items():
         for region_1 in regions:
             for region_2 in regions:
                 if region_1 != region_2:
-                    neighbours[region_1] = neighbours.get(region_1, set()).union({region_2})
-
-    vertices_array = np.array(list(map(lambda a: a[1], sorted(vertices.items()))))
-    centers = np.array(vor.filtered_points)
-    center_points = [Point(p) for p in vor.filtered_points]
-    polygons = np.array(list(map(lambda a: a[1], sorted(polygons.items()))))
-
-    return World(vertices_array, neighbours, centers, center_points, polygons)
+                    neighbours_by_region[region_1] = neighbours_by_region.get(region_1, set()).union({region_2})
+    return neighbours_by_region
 
 
-def create_heightmap(world: World):
-    heights = np.full(world.regions_count, -1.0)
-    heights_prim = np.full(world.regions_count, 0.0)
-
-    for chain in world.mountain_chains:
-        regions = set_heights_of_mountain_chain(chain, heights, heights_prim, world)
-
-        visited_regions = set()
-        to_process = collections.deque(regions)
-
-        while to_process:
-            region_id = to_process.popleft()
-            if region_id in visited_regions:
-                continue
-            neighbours = [n for n in world.neighbours[region_id] if n not in visited_regions]
-            to_process.extend(neighbours)
-
-            visited_regions.add(region_id)
-            for neighbour in neighbours:
-                heights[neighbour] = max(heights[neighbour], heights[region_id] - heights_prim[region_id])
-                heights_prim[neighbour] = heights_prim[region_id]
-
-    return heights
+def _calculate_neighbouring_vertices(np_vertices_by_region) -> Dict[VertexId, Set[VertexId]]:
+    neighbouring_vertices = {}
+    for region_id, region_vertices in enumerate(np_vertices_by_region):
+        for vertex, _ in enumerate(region_vertices):
+            curr_vertex = region_vertices[vertex]
+            next_vertex = region_vertices[(vertex + 1) % len(region_vertices)]
+            neighbouring_vertices[curr_vertex] = neighbouring_vertices.get(curr_vertex, set()).union({next_vertex})
+            neighbouring_vertices[next_vertex] = neighbouring_vertices.get(next_vertex, set()).union({curr_vertex})
+    return neighbouring_vertices
 
 
 def _height_for_the_same_terrain(height_1, height_2):
@@ -81,9 +92,6 @@ class TerrainGroup:
         self.terrain_name = terrain_name
         self.group_poly = group_poly
         self.center_line = center_line
-
-
-MIN_MOUNTAIN_HEIGHT = 0.6
 
 
 def height_to_terrain(height):
@@ -106,23 +114,21 @@ def merge_heights_into_blobs(world: World):
         regions_in_group = set()
         group_poly = Polygon()
         neighbours_to_visit = {region_id}
-        first_height = world.heights[region_id]
+        first_height = world.height_by_region[region_id]
         while neighbours_to_visit:
-            neighbour = neighbours_to_visit.pop()
-            if neighbour not in regions_in_group and _height_for_the_same_terrain(first_height,
-                                                                                  world.heights[neighbour]):
-                neighbours_to_visit.update(world.neighbours[neighbour])
-                group_poly = group_poly.union(world.polygons[neighbour])
-                regions_in_group.add(neighbour)
+            neighbour_region = neighbours_to_visit.pop()
+            if neighbour_region not in regions_in_group and _height_for_the_same_terrain(first_height,
+                                                                                  world.height_by_region[neighbour_region]):
+                neighbours_to_visit.update(world.regions_touching_region[neighbour_region])
+                group_poly = group_poly.union(world.polygon_by_region[neighbour_region])
+                regions_in_group.add(neighbour_region)
 
         # split groups which contain more than one mountain chain
         intersecting_chains = []
         for chain in world.mountain_chains:
             if chain.line.intersects(group_poly):
                 intersecting_chains += [chain.line]
-        if len(intersecting_chains) > 1:  # TODO SHOULD NEVER HAPPEN
-            raise ValueError(
-                "there should not be more than one intersecting chain, there are: " + str(intersecting_chains))
+        if len(intersecting_chains) > 1:
             group_polys = _split_intersecting_mountain_chains(intersecting_chains, regions_in_group, world)
         else:
             group_polys = [(group_poly, intersecting_chains[0] if len(intersecting_chains) else None)]
@@ -138,13 +144,13 @@ def _split_intersecting_mountain_chains(intersecting_chains, regions_in_group, w
     mountains_to_visit = []
     for region_id in regions_in_group:
         for chain_id, chain in enumerate(intersecting_chains):
-            if chain.intersects(world.polygons[region_id]):
+            if chain.intersects(world.polygon_by_region[region_id]):
                 distances[region_id] = 0
                 colors[region_id] = chain_id
                 mountains_to_visit += [region_id]
     while mountains_to_visit:
         region_id = mountains_to_visit.pop()
-        neighbours = [n for n in world.neighbours[region_id] if
+        neighbours = [n for n in world.regions_touching_region[region_id] if
                       distances.get(n, 1000) > distances.get(region_id) + 1 and n in regions_in_group]
         for n in neighbours:
             distances[n] = distances[region_id] + 1
@@ -154,7 +160,7 @@ def _split_intersecting_mountain_chains(intersecting_chains, regions_in_group, w
     for subgroup_id, regions in regions_in_subgroups:
         next_group_poly = Polygon()
         for r in [r[0] for r in regions]:
-            next_group_poly = next_group_poly.union(world.polygons[r])
+            next_group_poly = next_group_poly.union(world.polygon_by_region[r])
         group_polys += [(next_group_poly, intersecting_chains[subgroup_id])]
     return group_polys
 
@@ -166,57 +172,15 @@ class ChainDescriptor:
         self.height_prim = height_prim
 
 
-def create_polygonal_chain():
-    x1 = random.uniform(0.3, 0.7)
-    y1 = random.uniform(0.3, 0.7)
-
-    x2 = x1 + random.uniform(-0.2, 0.2)
-    y2 = y1 + random.uniform(-0.2, 0.2)
-
-    line_string = LineString([(x1, y1), (x2, y2)])
-    mountain_height = 1.0 - random.random() / 2
-    mountain_height_prim = (0.3 + (0.5 - random.random()) / 20) * mountain_height
-    return ChainDescriptor(line_string, mountain_height, mountain_height_prim)
-
-
 def set_heights_of_mountain_chain(chain: ChainDescriptor, heights, heights_prim, world: World):
     regions = set()
 
-    for region, polygon in enumerate(world.polygons):
+    for region_id, polygon in world.polygon_by_region.items():
         if polygon.intersects(chain.line):
-            heights[region] = chain.height
-            heights_prim[region] = chain.height_prim
-            regions.add(region)
+            heights[region_id] = chain.height
+            heights_prim[region_id] = chain.height_prim
+            regions.add(region_id)
     return regions
-
-
-def intersects_with_other_mountain_chains(
-        candidate_chain: ChainDescriptor,
-        existing_chains: List[ChainDescriptor],
-        world: World):
-    for existing_chain in existing_chains:
-        distance = candidate_chain.line.distance(existing_chain.line)
-        approx_region_diameter = 1.0 / math.sqrt(world.regions_count)
-
-        candidate_chain_over_min_height = (candidate_chain.height - MIN_MOUNTAIN_HEIGHT)
-        existing_chain_over_min_height = (existing_chain.height - MIN_MOUNTAIN_HEIGHT)
-
-        number_of_regions_to_be_away = \
-            math.ceil(candidate_chain_over_min_height / candidate_chain.height_prim) + \
-            math.ceil(existing_chain_over_min_height / existing_chain.height_prim) + 1
-        if distance / approx_region_diameter < number_of_regions_to_be_away:
-            return True
-    return False
-
-
-def create_mountain_chains(number_of_chains, world: World):
-    world.mountain_chains = []
-    for _ in range(number_of_chains):
-        new_chain = create_polygonal_chain()
-        if not intersects_with_other_mountain_chains(new_chain, world.mountain_chains, world):
-            world.mountain_chains += [new_chain]
-        else:
-            print("FAILED, TOO CLOSE!")
 
 
 def fix_mountain_center_line_to_fully_cover_mountain_polygon(world: World):
@@ -226,7 +190,7 @@ def fix_mountain_center_line_to_fully_cover_mountain_polygon(world: World):
     :param world:
     :return:
     """
-    mountains = [t for t in world.terrains if t.terrain_name == "mountains"]
+    mountains = [t for t in world.terrain_blobs if t.terrain_name == "mountains"]
     for mountain in mountains:
         mountain_center_line_points = mountain.center_line.coords
 
@@ -250,3 +214,4 @@ def _move_point_farther_away(border_point, second_point, poly):
     intersection = Point(second_point[0] + (intersection.x - second_point[0]) * 1.001,
                          second_point[1] + (intersection.y - second_point[1]) * 1.001)
     return intersection
+

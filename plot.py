@@ -3,6 +3,8 @@ import collections
 import matplotlib.pyplot as plt
 import numpy as np
 
+import data
+
 
 def plot_regions(world, to_file=False):
     fig = plt.figure()
@@ -10,7 +12,7 @@ def plot_regions(world, to_file=False):
 
     ax.plot(world.centers[:, 0], world.centers[:, 1], 'b.')
 
-    for poly_vertices in world.vertices:
+    for poly_vertices in world.vertices_by_region:
         ax.plot(poly_vertices[:, 0], poly_vertices[:, 1], 'go')
         vertices = np.append(poly_vertices, [poly_vertices[0, :]], axis=0)
         ax.plot(vertices[:, 0], vertices[:, 1], 'k-')
@@ -28,7 +30,7 @@ def plot_hypsometric(world, to_file=False):
     _display(to_file)
 
 
-def plot_polygons(world):
+def plot_polygons(world: data.World):
     HYPSOMETRIC_COLORS = collections.OrderedDict([
         (0.9, "#e42423"),
         (0.8, "#e5452b"),
@@ -48,15 +50,15 @@ def plot_polygons(world):
 
     fig = plt.figure()
     ax = fig.gca()
-    for region_id, poly_vertices in enumerate(world.vertices):
-        height = world.heights[region_id]
+    for region_id, poly_vertices in world.vertices_by_region.items():
+        height = world.height_by_region[region_id]
         hex_color = color_for_height(height)
-        vertices = np.append(poly_vertices, [poly_vertices[0, :]], axis=0)
+        vertices = np.append(poly_vertices, [np.array(poly_vertices)[0, :]], axis=0)
         ax.fill(vertices[:, 0], vertices[:, 1], hex_color)
 
 
-def plot_mountain_chains(world):
-    for terrain in [t for t in world.terrains if t.terrain_name == "mountains"]:
+def plot_mountain_chains(world: data.World):
+    for terrain in [t for t in world.terrain_blobs if t.terrain_name == "mountains"]:
         xes = [p[0] for p in terrain.center_line.coords]
         yes = [p[1] for p in terrain.center_line.coords]
         plt.plot(xes, yes, color="purple")

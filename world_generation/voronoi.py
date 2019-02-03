@@ -73,7 +73,7 @@ def _filter_is_in_bounding_box(points, bounding_box):
                                          points[:, 1] <= bounding_box[3]))
 
 
-def _voronoi(points, bounding_box):
+def _voronoi(points, bounding_box) -> sp.spatial.Voronoi:
     i = _filter_is_in_bounding_box(points, bounding_box)
     # Mirror points
     points_center = points[i, :]
