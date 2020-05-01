@@ -19,8 +19,8 @@ def intersects_with_other_mountain_chains(
         existing_chain_over_min_height = (existing_chain.height - data.MIN_MOUNTAIN_HEIGHT)
 
         number_of_regions_to_be_away = \
-            math.ceil(candidate_chain_over_min_height / candidate_chain.height_prim) + \
-            math.ceil(existing_chain_over_min_height / existing_chain.height_prim) + 1
+            math.ceil(candidate_chain_over_min_height / 0.02) + \
+            math.ceil(existing_chain_over_min_height / 0.02) + 1
         if distance / approx_region_diameter < number_of_regions_to_be_away:
             return True
     return False
@@ -35,14 +35,17 @@ def create_mountain_chains(number_of_chains, world: data.World):
         else:
             print("FAILED, TOO CLOSE!")
 
-def create_polygonal_chain():
-    x1 = random.uniform(0.3, 0.7)
-    y1 = random.uniform(0.3, 0.7)
 
-    x2 = x1 + random.uniform(-0.2, 0.2)
-    y2 = y1 + random.uniform(-0.2, 0.2)
+def create_polygonal_chain():
+    MIN_POS = 0.3
+    MAX_POS = 0.7
+    MAX_LEN = 0.2
+    x1 = random.uniform(MIN_POS, MAX_POS)
+    y1 = random.uniform(MIN_POS, MAX_POS)
+
+    x2 = x1 + random.uniform(max(-MAX_LEN, x1 - MIN_POS), min(MAX_LEN, MAX_POS - x1))
+    y2 = y1 + random.uniform(max(-MAX_LEN, y1 - MIN_POS), min(MAX_LEN, MAX_POS - y1))
 
     line_string = LineString([(x1, y1), (x2, y2)])
     mountain_height = 1.0 - random.random() / 2
-    mountain_height_prim = (0.3 + (0.5 - random.random()) / 20) * mountain_height
-    return data.ChainDescriptor(line_string, mountain_height, mountain_height_prim)
+    return data.ChainDescriptor(line_string, mountain_height)

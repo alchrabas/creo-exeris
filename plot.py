@@ -16,7 +16,7 @@ def plot_regions(world, to_file=False):
         ax.plot(poly_vertices[:, 0], poly_vertices[:, 1], 'go')
         vertices = np.append(poly_vertices, [poly_vertices[0, :]], axis=0)
         ax.plot(vertices[:, 0], vertices[:, 1], 'k-')
-
+    ax.set_axis_off()
     ax.set_xlim([0., 1.])
     ax.set_ylim([0., 1.])
 
@@ -25,7 +25,9 @@ def plot_regions(world, to_file=False):
 
 def plot_hypsometric(world, to_file=False):
     plot_polygons(world)
-    plot_mountain_chains(world)
+    # plot_downslopes(world)
+    # plot_mountain_chains(world)
+    plot_rivers(world)
 
     _display(to_file)
 
@@ -50,11 +52,11 @@ def plot_polygons(world: data.World):
 
     fig = plt.figure()
     ax = fig.gca()
-    for region_id, poly_vertices in world.vertices_by_region.items():
+    for region_id, vertices in world.vertices_by_region.items():
         height = world.height_by_region[region_id]
         hex_color = color_for_height(height)
-        vertices = np.append(poly_vertices, [np.array(poly_vertices)[0, :]], axis=0)
-        ax.fill(vertices[:, 0], vertices[:, 1], hex_color)
+        pos_of_vertices = np.array([world.pos_by_vertex[vertex] for vertex in vertices])
+        ax.fill(pos_of_vertices[:, 0], pos_of_vertices[:, 1], hex_color)
 
 
 def plot_mountain_chains(world: data.World):
@@ -64,8 +66,29 @@ def plot_mountain_chains(world: data.World):
         plt.plot(xes, yes, color="purple")
 
 
+def plot_rivers(world: data.World):
+    for river in world.rivers:
+        river_pos = [world.pos_by_vertex[vertex] for vertex in river]
+        xes = [p[0] for p in river_pos]
+        yes = [p[1] for p in river_pos]
+        plt.plot(xes, yes, color="blue")
+
+
+def plot_downslopes(world: data.World):
+    for vertex, pos in world.pos_by_vertex.items():
+        downslopes = world.downslopes[vertex]
+        for downslope in downslopes:
+            downslope_pos = world.pos_by_vertex[downslope]
+            plt.arrow(pos[0], pos[1], (downslope_pos[0] - pos[0]) / 2, (downslope_pos[1] - pos[1]) / 2,
+                      head_width=0.007, head_length=0.01)
+
+
 def _display(only_to_file):
-    plt.savefig("bounded_voronoi.png")
+    plt.axis('off')
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
+                        hspace=0, wspace=0)
+    plt.margins(0,0)
+    plt.savefig("bounded_voronoi.png", dpi=400, bbox_inches=0, pad_inches=0)
 
     if not only_to_file:
         plt.gca().set_aspect('equal', adjustable='box')

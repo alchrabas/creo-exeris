@@ -15,6 +15,7 @@ class World:
     def __init__(
             self,
             center_by_region: Dict[RegionId, Pos],
+            pos_by_vertex: Dict[VertexId, Pos],
             regions_touching_region: Dict[RegionId, Set[RegionId]],
             vertices_by_region: Dict[RegionId, List[VertexId]],
             vertices_touching_vertex: Dict[VertexId, Set[VertexId]],
@@ -22,6 +23,7 @@ class World:
             polygon_by_region: Dict[RegionId, Polygon]
     ):
         self.center_by_region = center_by_region
+        self.pos_by_vertex = pos_by_vertex
         self.vertices_by_region = vertices_by_region
         self.polygon_by_region = polygon_by_region
         self.regions_touching_region = regions_touching_region
@@ -33,33 +35,59 @@ class World:
         self.height_by_region: Dict[RegionId, float] = None
         self.terrain_by_region: Dict[RegionId, TerrainGroup] = None
         self.terrain_blobs: List[TerrainGroup] = None
-        self.rivers: List[List[VertexId]] = None
+        self.downslopes: Dict[VertexId, Set[VertexId]] = None
+        self.borders_water_by_vertex: Dict[VertexId, bool] = None
+        self.rivers: List[List[VertexId]] = []
         self.mountain_chains = None
 
 
 def convert_to_world(np_vertices_by_region, np_center_by_region, np_vertices):
-    polygon_by_region = {}
-    regions_touching_vertex, vertices_by_region = _calculate_regions_touching_vertex_and_vertices_by_region(np_vertices,
-                                                                                                            np_vertices_by_region)
-    for region_id in vertices_by_region:
-        polygon_by_region[region_id] = Polygon(vertices_by_region[region_id])
+    regions_touching_vertex = _calculate_regions_touching_vertex(np_vertices_by_region)
+    print("LEN: ", len(regions_touching_vertex))
+    vertices_by_region = _calculate_vertices_by_region(np_vertices_by_region)
+    polygon_by_region = _calculate_polygon_by_region(np_vertices, np_vertices_by_region)
+    pos_by_vertex = _calculate_pos_by_vertex(vertices_by_region, np_vertices)
     regions_touching_region = _calculate_region_neighbours(regions_touching_vertex)
+    a = set()
+    for vert in np_vertices_by_region:
+        a = a.union(set(vert))
     vertices_touching_vertex = _calculate_neighbouring_vertices(np_vertices_by_region)
+    print("LEN:", len(vertices_touching_vertex))
 
     center_by_region = {k: v for k, v in enumerate(np_center_by_region)}
 
-    return World(center_by_region, regions_touching_region, vertices_by_region, vertices_touching_vertex,
+    return World(center_by_region, pos_by_vertex, regions_touching_region, vertices_by_region, vertices_touching_vertex,
                  regions_touching_vertex, polygon_by_region)
 
 
-def _calculate_regions_touching_vertex_and_vertices_by_region(np_vertices, np_vertices_by_region):
+def _calculate_pos_by_vertex(vertices_by_region, np_vertices):
+    pos_by_vertex = {}
+    for vertices in vertices_by_region.values():
+        for vertex_id in vertices:
+            pos_by_vertex[vertex_id] = tuple(np_vertices[vertex_id])
+    return pos_by_vertex
+
+
+def _calculate_regions_touching_vertex(np_vertices_by_region):
     regions_touching_vertex = {}
-    vertices_by_region = {}
     for region_id, region_vertices in enumerate(np_vertices_by_region):
         for vertex in region_vertices:
             regions_touching_vertex[vertex] = regions_touching_vertex.get(vertex, set()).union({region_id})
-        vertices_by_region[region_id] = np_vertices[region_vertices, :].tolist()
-    return regions_touching_vertex, vertices_by_region
+    return regions_touching_vertex
+
+
+def _calculate_polygon_by_region(np_vertices, np_vertices_by_region):
+    polygon_by_region = {}
+    for region_id, region_vertices in enumerate(np_vertices_by_region):
+        polygon_by_region[region_id] = Polygon(np_vertices[region_vertices, :].tolist())
+    return polygon_by_region
+
+
+def _calculate_vertices_by_region(np_vertices_by_region):
+    vertices_by_region = {}
+    for region_id, region_vertices in enumerate(np_vertices_by_region):
+        vertices_by_region[region_id] = region_vertices
+    return vertices_by_region
 
 
 def _calculate_region_neighbours(regions_touching_vertex):
@@ -118,7 +146,8 @@ def merge_heights_into_blobs(world: World):
         while neighbours_to_visit:
             neighbour_region = neighbours_to_visit.pop()
             if neighbour_region not in regions_in_group and _height_for_the_same_terrain(first_height,
-                                                                                  world.height_by_region[neighbour_region]):
+                                                                                         world.height_by_region[
+                                                                                             neighbour_region]):
                 neighbours_to_visit.update(world.regions_touching_region[neighbour_region])
                 group_poly = group_poly.union(world.polygon_by_region[neighbour_region])
                 regions_in_group.add(neighbour_region)
@@ -166,21 +195,9 @@ def _split_intersecting_mountain_chains(intersecting_chains, regions_in_group, w
 
 
 class ChainDescriptor:
-    def __init__(self, line, height, height_prim):
+    def __init__(self, line, height):
         self.line = line
         self.height = height
-        self.height_prim = height_prim
-
-
-def set_heights_of_mountain_chain(chain: ChainDescriptor, heights, heights_prim, world: World):
-    regions = set()
-
-    for region_id, polygon in world.polygon_by_region.items():
-        if polygon.intersects(chain.line):
-            heights[region_id] = chain.height
-            heights_prim[region_id] = chain.height_prim
-            regions.add(region_id)
-    return regions
 
 
 def fix_mountain_center_line_to_fully_cover_mountain_polygon(world: World):
@@ -214,4 +231,3 @@ def _move_point_farther_away(border_point, second_point, poly):
     intersection = Point(second_point[0] + (intersection.x - second_point[0]) * 1.001,
                          second_point[1] + (intersection.y - second_point[1]) * 1.001)
     return intersection
-
