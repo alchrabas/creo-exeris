@@ -55,11 +55,11 @@ def _create_lake_around_center(center: data.VertexId, world: data.World):
     while to_process:
         vertex_id, dist = to_process.popleft()
         height_difference = abs(world.height_by_vertex[vertex_id] - world.height_by_vertex[center])
-        if dist < 3 and height_difference < 0.10:
-            lake_vertices += world.vertices_touching_vertex[vertex_id]
+        if dist < 3 and height_difference < 0.1:
             to_process += [(vertex, dist + 1) for vertex in world.vertices_touching_vertex[vertex_id]]
             for region_id in world.regions_touching_vertex[vertex_id]:
                 world.height_by_region[region_id] = -0.1
+                lake_vertices += world.vertices_by_region[region_id]
 
     for vertex in lake_vertices:
         world.height_by_vertex[vertex] = -0.1

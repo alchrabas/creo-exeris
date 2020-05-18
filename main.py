@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 import time
 from typing import Iterator
+import pickle
 
 import data
-import exporter
 import plot
 import world_generation
-from world_generation import voronoi, mountain_chains, heightmap, rivers
+from world_generation import voronoi, mountain_chains, heightmap, rivers, terrains
 
 
 def time_from_last_checkpoint() -> Iterator[float]:
@@ -23,7 +23,7 @@ def time_from_last_checkpoint() -> Iterator[float]:
 
 start = time.time()
 
-number_of_points = 5000
+number_of_points = 25000
 bounding_box = [(0, 1), (0, 1)]
 
 checkpoint = time_from_last_checkpoint()
@@ -35,12 +35,18 @@ print("voronoi", next(checkpoint))
 world = data.convert_to_world(voronoi_diag.filtered_regions, voronoi_diag.filtered_points, voronoi_diag.vertices)
 print("conversion", next(checkpoint))
 
-world_generation.mountain_chains.create_mountain_chains(5, world)
+# pickle.dump(world, open("dumps/world_post_voronoi_25000", "wb"))
+# world = pickle.load(open("dumps/world_post_voronoi_25000", "rb"))
+
+world_generation.mountain_chains.create_mountain_chains(15, world)
 world_generation.heightmap.create_heightmap(world)
 print("heightmap", next(checkpoint))
 
 world_generation.rivers.generate_rivers(17, world)
 print("rivers", next(checkpoint))
+
+world_generation.terrains.generate_terrains(world)
+print("terrains", next(checkpoint))
 
 # world.terrain_blobs = data.merge_heights_into_blobs(world)
 # print("convert to blobs", next(checkpoint))

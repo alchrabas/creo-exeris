@@ -30,14 +30,13 @@ def create_heightmap(world: data.World):
     for region_id, vertices in world.vertices_by_region.items():
         average_height = statistics.mean([world.height_by_vertex[vertex] for vertex in vertices])
         world.height_by_region[region_id] = average_height
-
     world.downslopes, world.borders_water_by_vertex = _calc_downslopes_and_water_borders(world)
 
 
 def get_height(this_vertex: data.VertexId, neighbour: data.VertexId, world: data.World):
     neighbour_height = world.height_by_vertex[neighbour]
-    current_height_coeff = 2  # (2 if neighbour_height > data.MIN_MOUNTAIN_HEIGHT else 1.5)
-    applied_noise = 0.001 + _noise(*world.pos_by_vertex[neighbour]) * current_height_coeff
+    current_height_coeff = (1 if neighbour_height > data.MIN_MOUNTAIN_HEIGHT else 0.15)
+    applied_noise = 0.02 + min(0.2, abs(_noise(*world.pos_by_vertex[neighbour]))) * current_height_coeff
     return max(world.height_by_vertex.get(this_vertex, -1),
                neighbour_height - applied_noise)
 
@@ -68,13 +67,13 @@ def _calc_downslopes_and_water_borders(world: data.World):
 
 
 def _noise(x, y):
-    scale = 100.0
+    scale = 10.0
     octaves = 6
     persistence = 0.5
     lacunarity = 2.0
 
-    r = noise.pnoise2(x / scale,
-                      y / scale,
+    r = noise.pnoise2(x * scale,
+                      y * scale,
                       octaves=octaves,
                       persistence=persistence,
                       lacunarity=lacunarity,

@@ -13,14 +13,14 @@ def intersects_with_other_mountain_chains(
         world: data.World):
     for existing_chain in existing_chains:
         distance = candidate_chain.line.distance(existing_chain.line)
-        approx_region_diameter = 1.6 / math.sqrt(world.regions_count)
+        approx_region_diameter = 1.0 / math.sqrt(world.regions_count)
 
         candidate_chain_over_min_height = (candidate_chain.height - data.MIN_MOUNTAIN_HEIGHT)
         existing_chain_over_min_height = (existing_chain.height - data.MIN_MOUNTAIN_HEIGHT)
 
         number_of_regions_to_be_away = \
-            math.ceil(candidate_chain_over_min_height / 0.02) + \
-            math.ceil(existing_chain_over_min_height / 0.02) + 1
+            math.ceil(candidate_chain_over_min_height / 0.06) + \
+            math.ceil(existing_chain_over_min_height / 0.06) + 1
         if distance / approx_region_diameter < number_of_regions_to_be_away:
             return True
     return False
