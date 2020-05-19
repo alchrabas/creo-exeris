@@ -28,23 +28,26 @@ def intersects_with_other_mountain_chains(
 
 def create_mountain_chains(number_of_chains, world: data.World):
     world.mountain_chains = []
-    for _ in range(number_of_chains):
+    attempts = 0
+    mountains_created = 0
+    while mountains_created < number_of_chains and attempts < 1000:
         new_chain = create_polygonal_chain()
         if not intersects_with_other_mountain_chains(new_chain, world.mountain_chains, world):
             world.mountain_chains += [new_chain]
+            mountains_created += 1
         else:
-            print("FAILED, TOO CLOSE!")
+            attempts += 1
 
 
 def create_polygonal_chain():
-    MIN_POS = 0.3
-    MAX_POS = 0.7
+    MIN_POS = 0.25
+    MAX_POS = 0.75
     MAX_LEN = 0.2
     x1 = random.uniform(MIN_POS, MAX_POS)
     y1 = random.uniform(MIN_POS, MAX_POS)
 
-    x2 = x1 + random.uniform(max(-MAX_LEN, x1 - MIN_POS), min(MAX_LEN, MAX_POS - x1))
-    y2 = y1 + random.uniform(max(-MAX_LEN, y1 - MIN_POS), min(MAX_LEN, MAX_POS - y1))
+    x2 = x1 + random.uniform(max(-MAX_LEN, x1 - MAX_POS), min(MAX_LEN, MAX_POS - x1))
+    y2 = y1 + random.uniform(max(-MAX_LEN, y1 - MAX_POS), min(MAX_LEN, MAX_POS - y1))
 
     line_string = LineString([(x1, y1), (x2, y2)])
     mountain_height = 1.0 - random.random() / 2

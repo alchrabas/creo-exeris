@@ -35,10 +35,10 @@ print("voronoi", next(checkpoint))
 world = data.convert_to_world(voronoi_diag.filtered_regions, voronoi_diag.filtered_points, voronoi_diag.vertices)
 print("conversion", next(checkpoint))
 
-# pickle.dump(world, open("dumps/world_post_voronoi_25000", "wb"))
-# world = pickle.load(open("dumps/world_post_voronoi_25000", "rb"))
+# pickle.dump(world, open("dumps/world_post_voronoi_" + str(number_of_points), "wb"))
+# world = pickle.load(open("dumps/world_post_voronoi_" + str(number_of_points), "rb"))
 
-world_generation.mountain_chains.create_mountain_chains(15, world)
+world_generation.mountain_chains.create_mountain_chains(11, world)
 world_generation.heightmap.create_heightmap(world)
 print("heightmap", next(checkpoint))
 

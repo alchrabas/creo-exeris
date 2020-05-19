@@ -26,8 +26,8 @@ def plot_regions(world, to_file=False):
 
 def plot_hypsometric(world, to_file=False):
     # plot_polygons(world)
-    # plot_mountain_chains(world)
     plot_terrain(world)
+    # plot_mountain_chains(world)
     plot_rivers(world)
     # plot_downslopes(world)
     # plot_moisture(world)
@@ -74,7 +74,7 @@ def plot_rivers(world: data.World):
         river_pos = [world.pos_by_vertex[vertex] for vertex in river]
         xes = [p[0] for p in river_pos]
         yes = [p[1] for p in river_pos]
-        plt.plot(xes, yes, color="blue")
+        plt.plot(xes, yes, color="blue", linewidth=0.5)
 
 
 def plot_moisture(world: data.World):

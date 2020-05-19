@@ -1,8 +1,12 @@
 import collections
+import math
 import random
 from typing import List
 
 import data
+
+
+MIN_RIVER_LENGTH = 5
 
 
 def generate_rivers(rivers: int, world: data.World):
@@ -10,29 +14,42 @@ def generate_rivers(rivers: int, world: data.World):
                          height >= data.MIN_MOUNTAIN_HEIGHT]
     created_rivers = []
     vertices_having_river = set()
-    for _ in range(rivers):
+    attempts = 0
+    while len(created_rivers) < rivers and attempts < 1000:
+        attempts += 1
         spring_id = random.choice(mountain_vertices)
 
         river = [spring_id]
+        failed_attempts = 0
         while True:
             last_river_segment = river[-1]
-            if len(world.downslopes[last_river_segment]) == 0:
-                if not world.borders_water_by_vertex[last_river_segment] and len(river) > 2:
-                    _generate_lake(last_river_segment, river[-2], world)
-                break
+            if len(world.downslopes[last_river_segment]) == 0:  # no downslopes
+                if world.borders_water_by_vertex[last_river_segment]:  # river reaches existing sea/lake
+                    break
 
-            downslope_having_river = _downslope_having_river(world.downslopes[last_river_segment],
-                                                             vertices_having_river)
-            if downslope_having_river:
-                river.append(downslope_having_river)
-                break
+                failed_attempts += 1
+                if failed_attempts > 50:
+                    if len(river) > MIN_RIVER_LENGTH:
+                        _generate_lake(last_river_segment, river[-2], world)
+                    break
+                elif len(river) > 3:  # remove previous segments to try again because they lead to a sink
+                    for _ in range(min(len(river) - 1, math.ceil(failed_attempts / 5))):
+                        river.pop()
+                else:
+                    break
+            else:
+                downslope_having_river = _downslope_having_river(world.downslopes[last_river_segment],
+                                                                 vertices_having_river)
+                if downslope_having_river:
+                    river.append(downslope_having_river)
+                    break
 
-            next_river_vertex = random.choice(tuple(world.downslopes[last_river_segment]))
-            river.append(next_river_vertex)
+                next_river_vertex = random.choice(tuple(world.downslopes[last_river_segment]))
+                river.append(next_river_vertex)
 
-        if len(river) > 2:
+        if len(river) > MIN_RIVER_LENGTH:
             created_rivers.append(river)
-        vertices_having_river = vertices_having_river.union(river)
+            vertices_having_river = vertices_having_river.union(river)
 
     world.rivers = _remove_river_segments_in_lakes(created_rivers, world)
 
@@ -55,7 +72,8 @@ def _create_lake_around_center(center: data.VertexId, world: data.World):
     while to_process:
         vertex_id, dist = to_process.popleft()
         height_difference = abs(world.height_by_vertex[vertex_id] - world.height_by_vertex[center])
-        if dist < 3 and height_difference < 0.1:
+
+        if dist < 3 and height_difference < 0.03:
             to_process += [(vertex, dist + 1) for vertex in world.vertices_touching_vertex[vertex_id]]
             for region_id in world.regions_touching_vertex[vertex_id]:
                 world.height_by_region[region_id] = -0.1
