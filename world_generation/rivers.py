@@ -51,7 +51,7 @@ def generate_rivers(rivers: int, world: data.World):
             created_rivers.append(river)
             vertices_having_river = vertices_having_river.union(river)
 
-    world.rivers = _remove_river_segments_in_lakes(created_rivers, world)
+    world.rivers = created_rivers
 
 
 def _generate_lake(start_vertex_id: data.VertexId, previous_vertex_id: data.VertexId, world: data.World):
@@ -103,30 +103,3 @@ def _downslope_having_river(downslopes, vertices_having_river):
             return downslope
     return None
 
-
-def _remove_river_segments_in_lakes(original_rivers: List[List[data.VertexId]], world: data.World):
-    resultant_rivers = []
-    for river in original_rivers:
-        river_so_far = [river[0]]
-        pos = 1
-        while pos < len(river):
-            previous_vertex, current_vertex = river[pos - 1], river[pos]
-
-            if _any_region_touching_vertex_is_lake(previous_vertex, world) \
-                    and _any_region_touching_vertex_is_lake(current_vertex, world):
-                if len(river_so_far) > 2:
-                    resultant_rivers += [river_so_far]
-                river_so_far = []
-            else:
-                river_so_far += [current_vertex]
-            pos += 1
-        if len(river_so_far) > 1:
-            resultant_rivers += [river_so_far]
-    return resultant_rivers
-
-
-def _any_region_touching_vertex_is_lake(vertex: data.VertexId, world: data.World):
-    for region_id in world.regions_touching_vertex[vertex]:
-        if world.height_by_region[region_id] < 0:
-            return True
-    return False

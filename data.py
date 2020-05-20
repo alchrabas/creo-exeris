@@ -44,11 +44,10 @@ class World:
 
 def convert_to_world(np_vertices_by_region, np_center_by_region, np_vertices):
     regions_touching_vertex = _calculate_regions_touching_vertex(np_vertices_by_region)
-    print("LEN: ", len(regions_touching_vertex))
     vertices_by_region = _calculate_vertices_by_region(np_vertices_by_region)
     polygon_by_region = _calculate_polygon_by_region(np_vertices, np_vertices_by_region)
     pos_by_vertex = _calculate_pos_by_vertex(vertices_by_region, np_vertices)
-    regions_touching_region = _calculate_region_neighbours(regions_touching_vertex)
+    regions_touching_region = _calculate_region_neighbours(regions_touching_vertex, vertices_by_region)
     a = set()
     for vert in np_vertices_by_region:
         a = a.union(set(vert))
@@ -91,8 +90,8 @@ def _calculate_vertices_by_region(np_vertices_by_region):
     return vertices_by_region
 
 
-def _calculate_region_neighbours(regions_touching_vertex):
-    neighbours_by_region = {k: set() for k, _ in enumerate(regions_touching_vertex)}
+def _calculate_region_neighbours(regions_touching_vertex, vertices_by_region):
+    neighbours_by_region = {k: set() for k, _ in enumerate(vertices_by_region)}
     for vertex, regions in regions_touching_vertex.items():
         for region_1 in regions:
             for region_2 in regions:

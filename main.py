@@ -6,7 +6,7 @@ import pickle
 import data
 import plot
 import world_generation
-from world_generation import voronoi, mountain_chains, heightmap, rivers, terrains
+from world_generation import voronoi, mountain_chains, heightmap, rivers, terrains, fixes
 
 
 def time_from_last_checkpoint() -> Iterator[float]:
@@ -47,6 +47,9 @@ print("rivers", next(checkpoint))
 
 world_generation.terrains.generate_terrains(world)
 print("terrains", next(checkpoint))
+
+world_generation.fixes.remove_artifacts(world)
+print("remove_artifacts", next(checkpoint))
 
 # world.terrain_blobs = data.merge_heights_into_blobs(world)
 # print("convert to blobs", next(checkpoint))
