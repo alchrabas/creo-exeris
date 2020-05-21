@@ -27,6 +27,8 @@ def create_heightmap(world: data.World):
             for neighbour in neighbours:
                 world.height_by_vertex[neighbour] = get_height(neighbour, vertex_id, world)
 
+    _decrease_height_close_to_border(world)
+
     for region_id, vertices in world.vertices_by_region.items():
         average_height = statistics.mean([world.height_by_vertex[vertex] for vertex in vertices])
         world.height_by_region[region_id] = average_height
@@ -49,6 +51,22 @@ def set_heights_of_mountain_chain(chain: data.ChainDescriptor, world: data.World
                 world.height_by_vertex[vertex_id] = chain.height
                 vertices.add(vertex_id)
     return vertices
+
+
+def _decrease_height_close_to_border(world: data.World):
+    vertices_touching_border = [v for v, pos in world.pos_by_vertex.items() if
+                                pos[0] in (0.0, 1.0) or pos[1] in (0.0, 1.0)]
+    height_decreases = {vertex_id: 4.0 for vertex_id in vertices_touching_border}
+    to_visit = vertices_touching_border
+    while to_visit:
+        vertex_id = to_visit.pop()
+        curr_vertex_height_decrease = height_decreases[vertex_id]
+        for neighbour in world.vertices_touching_vertex[vertex_id]:
+            if neighbour not in height_decreases or max(0.01, curr_vertex_height_decrease * 0.75) > height_decreases[neighbour]:
+                height_decreases[neighbour] = max(0.01, curr_vertex_height_decrease * 0.75)
+                to_visit.append(neighbour)
+    for vertex_id, decrease in height_decreases.items():
+        world.height_by_vertex[vertex_id] -= decrease
 
 
 def _calc_downslopes_and_water_borders(world: data.World):

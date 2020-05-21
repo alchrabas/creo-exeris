@@ -27,7 +27,7 @@ def plot_regions(world, to_file=False):
 def plot_hypsometric(world, to_file=False):
     # plot_polygons(world)
     plot_terrain(world)
-    # plot_mountain_chains(world)
+    plot_mountain_chains(world)
     plot_rivers(world)
     # plot_downslopes(world)
     # plot_moisture(world)
@@ -63,9 +63,9 @@ def plot_polygons(world: data.World):
 
 
 def plot_mountain_chains(world: data.World):
-    for terrain in [t for t in world.terrain_blobs if t.terrain_name == "mountains"]:
-        xes = [p[0] for p in terrain.center_line.coords]
-        yes = [p[1] for p in terrain.center_line.coords]
+    for chain in world.mountain_chains:
+        xes = [p[0] for p in chain.line.coords]
+        yes = [p[1] for p in chain.line.coords]
         plt.plot(xes, yes, color="purple")
 
 
@@ -91,7 +91,6 @@ def plot_terrain(world: data.World):
         TerrainTypes.DECIDUOUS_FOREST: "#006600",
         TerrainTypes.GRASSLAND: "#A7E541",
         TerrainTypes.PLAINS: "#DCFF5E",
-        TerrainTypes.BUSH: "#15FF00",
         TerrainTypes.DEEP_WATER: "#007ad0",
         TerrainTypes.SHALLOW_WATER: "#0091cf",
         TerrainTypes.LAKE: "#95daf0",

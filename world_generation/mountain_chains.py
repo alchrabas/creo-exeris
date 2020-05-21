@@ -49,6 +49,16 @@ def create_polygonal_chain():
     x2 = x1 + random.uniform(max(-MAX_LEN, x1 - MAX_POS), min(MAX_LEN, MAX_POS - x1))
     y2 = y1 + random.uniform(max(-MAX_LEN, y1 - MAX_POS), min(MAX_LEN, MAX_POS - y1))
 
-    line_string = LineString([(x1, y1), (x2, y2)])
+    fraction_of_point_on_chain = 0.25 + 0.5 * random.random()  # in [0.25, 0.75]
+    dx = x2 - x1
+    dy = y2 - y1
+
+    middle_x, middle_y = x1 + fraction_of_point_on_chain * dx, y1 + fraction_of_point_on_chain * dy
+
+    scale = (random.random() - 0.5) * 2 * (- abs(fraction_of_point_on_chain - 0.5) + 0.5)  # [-0.5, 0.5]
+    break_pt_x, break_pt_y = middle_x + dx * scale, middle_y - dy * scale
+
+    line_string = LineString([(x1, y1), (break_pt_x, break_pt_y), (x2, y2)])
+
     mountain_height = 1.0 - random.random() / 2
     return data.ChainDescriptor(line_string, mountain_height)

@@ -39,7 +39,7 @@ class World:
         self.borders_water_by_vertex: Dict[VertexId, bool] = None
         self.rivers: List[List[VertexId]] = []
         self.moisture_by_vertex: Dict[VertexId, float] = None
-        self.mountain_chains = None
+        self.mountain_chains: List[ChainDescriptor] = None
 
 
 def convert_to_world(np_vertices_by_region, np_center_by_region, np_vertices):

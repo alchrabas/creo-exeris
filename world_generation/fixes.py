@@ -14,11 +14,13 @@ def remove_artifacts(world: data.World):
     remove_isolated_terrain_areas(world)
     remove_river_segments_in_lakes(world)
 
+
 def remove_isolated_terrain_areas(world: data.World):
     blobs = _get_terrain_blobs(world)
     removed_blobs = 0
     for blob in blobs:
-        if len(blob) <= 3 and world.terrain_by_region[list(blob)[0]] != terrains.TerrainTypes.LAKE:  # would make river go nowhere
+        if len(blob) <= 3 and world.terrain_by_region[
+            list(blob)[0]] != terrains.TerrainTypes.LAKE:  # would make river go nowhere
             neighbours = set()
             for region_id in blob:
                 new_neighbours = [neighbour for neighbour in world.regions_touching_region[region_id]

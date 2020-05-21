@@ -16,8 +16,6 @@ class TerrainTypes:
     DECIDUOUS_FOREST = "oak_forest"
     GRASSLAND = "grassland"
     PLAINS = "plains"
-    BUSH = "bush"
-    # todo add swamp?
 
 
 def generate_terrains(world: data.World):
