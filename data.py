@@ -1,5 +1,5 @@
 import itertools
-from typing import List, Tuple, Dict, Set
+from typing import List, Tuple, Dict, Set, Callable, Iterable
 
 from shapely.geometry import Polygon, Point, LineString
 
@@ -36,7 +36,6 @@ class World:
         self.terrain_by_region: Dict[RegionId, TerrainGroup] = None
         self.terrain_blobs: List[TerrainGroup] = None
         self.downslopes: Dict[VertexId, Set[VertexId]] = None
-        self.borders_water_by_vertex: Dict[VertexId, bool] = None
         self.rivers: List[List[VertexId]] = []
         self.moisture_by_vertex: Dict[VertexId, float] = None
         self.mountain_chains: List[ChainDescriptor] = None
@@ -200,34 +199,31 @@ class ChainDescriptor:
         self.height = height
 
 
-def fix_mountain_center_line_to_fully_cover_mountain_polygon(world: World):
-    """
-    A fix is needed because terra-exeris requires that LineStrings of mountain chains must touch
-    the edge of terrain of the type 'mountain'
-    :param world:
-    :return:
-    """
-    mountains = [t for t in world.terrain_blobs if t.terrain_name == "mountains"]
-    for mountain in mountains:
-        mountain_center_line_points = mountain.center_line.coords
-
-        new_p_first = _move_point_farther_away(mountain_center_line_points[0],
-                                               mountain_center_line_points[1],
-                                               mountain.group_poly)
-        new_p_last = _move_point_farther_away(mountain_center_line_points[-1],
-                                              mountain_center_line_points[-2],
-                                              mountain.group_poly)
-
-        mountain.center_line = LineString([new_p_first] + mountain_center_line_points[1:-1] + [new_p_last])
+def vertices_touching_border(world: World):
+    return [v for v, pos in world.pos_by_vertex.items() if pos[0] in (0.0, 1.0) or pos[1] in (0.0, 1.0)]
 
 
-def _move_point_farther_away(border_point, second_point, poly):
-    new_point = Point(second_point[0] + (border_point[0] - second_point[0]) * 100,
-                      second_point[1] + (border_point[1] - second_point[1]) * 100)
+def walk_over_regions(initial_regions: Iterable[RegionId], predicate: Callable[[RegionId], bool],
+                      world: World) -> Set[RegionId]:
+    to_visit = set(initial_regions)
+    found = set()
+    while to_visit:
+        current_region = to_visit.pop()
+        neighbours_fulfilling_predicate = [r for r in world.regions_touching_region[current_region] if
+                                           predicate(r) and r not in found]
+        found.update(neighbours_fulfilling_predicate)
+        to_visit.update(neighbours_fulfilling_predicate)
+    return found
 
-    intersection = poly.exterior.intersection(LineString([new_point, second_point]))
-    if not isinstance(intersection, Point):
-        raise ValueError("the mountain chain cannot reach the border")
-    intersection = Point(second_point[0] + (intersection.x - second_point[0]) * 1.001,
-                         second_point[1] + (intersection.y - second_point[1]) * 1.001)
-    return intersection
+
+def walk_over_vertices(initial_vertices: Iterable[VertexId], predicate: Callable[[VertexId], bool],
+                       world: World) -> Set[VertexId]:
+    to_visit = set(initial_vertices)
+    found = set()
+    while to_visit:
+        current_vertex = to_visit.pop()
+        neighbours_fulfilling_predicate = [r for r in world.vertices_touching_vertex[current_vertex] if
+                                           predicate(r) and r not in found]
+        found.update(neighbours_fulfilling_predicate)
+        to_visit.update(neighbours_fulfilling_predicate)
+    return found

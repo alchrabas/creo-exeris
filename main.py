@@ -2,11 +2,12 @@
 import time
 from typing import Iterator
 import pickle
+from os import path
 
 import data
 import plot
 import world_generation
-from world_generation import voronoi, mountain_chains, heightmap, rivers, terrains, fixes
+from world_generation import voronoi, mountain_chains, heightmap, rivers, terrains, fixes, clustering
 
 
 def time_from_last_checkpoint() -> Iterator[float]:
@@ -29,14 +30,16 @@ bounding_box = [(0, 1), (0, 1)]
 checkpoint = time_from_last_checkpoint()
 next(checkpoint)
 
-voronoi_diag = voronoi.relaxed_voronoi(number_of_points, bounding_box, 8)
-print("voronoi", next(checkpoint))
+if not path.exists("dumps/world_post_voronoi_" + str(number_of_points)):
+    print("No cached voronoi found. Generating it...")
+    voronoi_diag = voronoi.relaxed_voronoi(number_of_points, bounding_box, 8)
+    print("voronoi", next(checkpoint))
 
-world = data.convert_to_world(voronoi_diag.filtered_regions, voronoi_diag.filtered_points, voronoi_diag.vertices)
-print("conversion", next(checkpoint))
-
-# pickle.dump(world, open("dumps/world_post_voronoi_" + str(number_of_points), "wb"))
-# world = pickle.load(open("dumps/world_post_voronoi_" + str(number_of_points), "rb"))
+    world = data.convert_to_world(voronoi_diag.filtered_regions, voronoi_diag.filtered_points, voronoi_diag.vertices)
+    print("conversion", next(checkpoint))
+    pickle.dump(world, open("dumps/world_post_voronoi_" + str(number_of_points), "wb"))
+else:
+    world = pickle.load(open("dumps/world_post_voronoi_" + str(number_of_points), "rb"))
 
 world_generation.mountain_chains.create_mountain_chains(11, world)
 world_generation.heightmap.create_heightmap(world)
@@ -48,14 +51,14 @@ print("rivers", next(checkpoint))
 world_generation.terrains.generate_terrains(world)
 print("terrains", next(checkpoint))
 
-world_generation.fixes.remove_artifacts(world)
-print("remove_artifacts", next(checkpoint))
+world_generation.fixes.remove_artifacts_before_clustering(world)
+print("remove_artifacts_before_clustering", next(checkpoint))
 
-# world.terrain_blobs = data.merge_heights_into_blobs(world)
-# print("convert to blobs", next(checkpoint))
+world_generation.clustering.cluster_terrains(world)
+print("clustering", next(checkpoint))
 
-# data.fix_mountain_center_line_to_fully_cover_mountain_polygon(world)
-# print("fix mountains", next(checkpoint))
+world_generation.fixes.remove_artifacts_after_clustering(world)
+print("remove_artifacts_after_clustering", next(checkpoint))
 
 # dump = exporter.export(world.terrain_blobs)
 

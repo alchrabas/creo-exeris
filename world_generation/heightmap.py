@@ -32,7 +32,7 @@ def create_heightmap(world: data.World):
     for region_id, vertices in world.vertices_by_region.items():
         average_height = statistics.mean([world.height_by_vertex[vertex] for vertex in vertices])
         world.height_by_region[region_id] = average_height
-    world.downslopes, world.borders_water_by_vertex = _calc_downslopes_and_water_borders(world)
+    world.downslopes = _calc_downslopes_and_water_borders(world)
 
 
 def get_height(this_vertex: data.VertexId, neighbour: data.VertexId, world: data.World):
@@ -54,8 +54,7 @@ def set_heights_of_mountain_chain(chain: data.ChainDescriptor, world: data.World
 
 
 def _decrease_height_close_to_border(world: data.World):
-    vertices_touching_border = [v for v, pos in world.pos_by_vertex.items() if
-                                pos[0] in (0.0, 1.0) or pos[1] in (0.0, 1.0)]
+    vertices_touching_border = data.vertices_touching_border(world)
     height_decreases = {vertex_id: 4.0 for vertex_id in vertices_touching_border}
     to_visit = vertices_touching_border
     while to_visit:
@@ -71,17 +70,15 @@ def _decrease_height_close_to_border(world: data.World):
 
 def _calc_downslopes_and_water_borders(world: data.World):
     downslopes = {}
-    borders_water_by_vertex = {k: False for k in world.vertices_touching_vertex.keys()}
     for vertex, neighbouring_vertices in world.vertices_touching_vertex.items():
         any_touching_region_is_water = any(
             [world.height_by_region[region_id] < 0 for region_id in world.regions_touching_vertex[vertex]])
         if any_touching_region_is_water:
             downslopes[vertex] = set()
-            borders_water_by_vertex[vertex] = True
         else:
             current_height = world.height_by_vertex[vertex]
             downslopes[vertex] = set([n for n in neighbouring_vertices if world.height_by_vertex[n] < current_height])
-    return downslopes, borders_water_by_vertex
+    return downslopes
 
 
 def _noise(x, y):

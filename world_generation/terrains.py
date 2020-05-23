@@ -3,8 +3,8 @@ from collections import Counter
 
 
 def most_frequent(list_of_values):
-    occurence_count = Counter(list_of_values)
-    return occurence_count.most_common(1)[0][0]
+    occurrence_count = Counter(list_of_values)
+    return occurrence_count.most_common(1)[0][0]
 
 
 class TerrainTypes:
@@ -79,17 +79,8 @@ def _generate_moisture(world: data.World):
 
 
 def _get_inland_water_vertices(world: data.World):
-    vertices_touching_border = [v for v, pos in world.pos_by_vertex.items() if
-                                pos[0] in (0.0, 1.0) or pos[1] in (0.0, 1.0)]
+    vertices_touching_border = data.vertices_touching_border(world)
 
-    visited = set()
-    to_visit = set(vertices_touching_border)
-    while to_visit:
-        curr_vertex = to_visit.pop()
-        if curr_vertex in visited:
-            continue
-        visited.add(curr_vertex)
-        to_visit.update([neighbour for neighbour in world.vertices_touching_vertex[curr_vertex]
-                         if world.height_by_vertex[neighbour] < 0 and neighbour not in visited])
+    sea_vertices = data.walk_over_vertices(vertices_touching_border, lambda v: world.height_by_vertex[v] < 0, world)
 
-    return [v for v, height in world.height_by_vertex.items() if height < 0 and v not in visited]
+    return [v for v, height in world.height_by_vertex.items() if height < 0 and v not in sea_vertices]

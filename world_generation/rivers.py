@@ -24,7 +24,7 @@ def generate_rivers(rivers: int, world: data.World):
         while True:
             last_river_segment = river[-1]
             if len(world.downslopes[last_river_segment]) == 0:  # no downslopes
-                if world.borders_water_by_vertex[last_river_segment]:  # river reaches existing sea/lake
+                if world.height_by_vertex[last_river_segment] < 0:  # river reaches existing sea/lake
                     break
 
                 failed_attempts += 1
