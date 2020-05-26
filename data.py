@@ -34,11 +34,11 @@ class World:
         self.height_by_vertex: Dict[VertexId, float] = None
         self.height_by_region: Dict[RegionId, float] = None
         self.terrain_by_region: Dict[RegionId, TerrainGroup] = None
-        self.terrain_blobs: List[TerrainGroup] = None
         self.downslopes: Dict[VertexId, Set[VertexId]] = None
         self.rivers: List[List[VertexId]] = []
         self.moisture_by_vertex: Dict[VertexId, float] = None
         self.mountain_chains: List[ChainDescriptor] = None
+        self.clusters: List[Cluster] = None
 
 
 def convert_to_world(np_vertices_by_region, np_center_by_region, np_vertices):
@@ -206,7 +206,7 @@ def vertices_touching_border(world: World):
 def walk_over_regions(initial_regions: Iterable[RegionId], predicate: Callable[[RegionId], bool],
                       world: World) -> Set[RegionId]:
     to_visit = set(initial_regions)
-    found = set()
+    found = set(initial_regions)
     while to_visit:
         current_region = to_visit.pop()
         neighbours_fulfilling_predicate = [r for r in world.regions_touching_region[current_region] if
@@ -227,3 +227,10 @@ def walk_over_vertices(initial_vertices: Iterable[VertexId], predicate: Callable
         found.update(neighbours_fulfilling_predicate)
         to_visit.update(neighbours_fulfilling_predicate)
     return found
+
+
+class Cluster:
+    def __init__(self, polygon, terrain_type, regions: Set[RegionId]):
+        self.polygon = polygon
+        self.terrain_type = terrain_type
+        self.regions = regions

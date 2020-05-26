@@ -1,26 +1,15 @@
 #!/usr/bin/env python
+import random
+import shutil
 import time
-from typing import Iterator
 import pickle
 from os import path
 
 import data
 import plot
 import world_generation
+from checkpoint import time_from_last_checkpoint
 from world_generation import voronoi, mountain_chains, heightmap, rivers, terrains, fixes, clustering
-
-
-def time_from_last_checkpoint() -> Iterator[float]:
-    """
-    Generator returning seconds elapsed since the previous call of the generator
-    """
-    start = time.time()
-    yield 0.0
-    while True:
-        last_checkpoint = time.time()
-        yield last_checkpoint - start
-        start = last_checkpoint
-
 
 start = time.time()
 
@@ -66,7 +55,14 @@ print("remove_artifacts_after_clustering", next(checkpoint))
 #     file.write(dump)
 # print("export", next(checkpoint))
 
-plot.plot_hypsometric(world, True)
+plot.plot_map(world, True)
 print("plot", next(checkpoint))
+
+file_id = random.randint(0, 1000000)
+file_name = "generated_map_{}_{}".format(number_of_points, file_id)
+shutil.copyfile("map.png", "rendered_maps/" + file_name)
+
+print("Generated map with name generated_map_" + str(number_of_points) + "_" + str(file_id))
+pickle.dump(world, open("dumps/" + file_name, "wb"))
 
 print("Finished in {} seconds".format(time.time() - start))

@@ -25,8 +25,7 @@ def remove_artifacts_before_clustering(world: data.World):
 
 
 def remove_artifacts_after_clustering(world: data.World):
-    pass
-    # fix_mountain_center_line_to_fully_cover_mountain_polygon(world)
+    fix_mountain_center_line_to_fully_cover_mountain_polygon(world)
 
 
 def remove_small_isolated_terrain_areas(world: data.World):
@@ -162,18 +161,25 @@ def fix_mountain_center_line_to_fully_cover_mountain_polygon(world: data.World):
     :param world:
     :return:
     """
-    mountains = [t for t in world.terrain_blobs if t.terrain_name == "mountains"]
-    for mountain in mountains:
-        mountain_center_line_points = mountain.center_line.coords
+    mountains = [cluster for cluster in world.clusters if cluster.terrain_type == TerrainTypes.MOUNTAIN]
+    for mountain_chain in world.mountain_chains:
+        intersecting_mountains = [mountain for mountain in mountains if mountain.polygon.intersects(mountain_chain.line)]
+        if not intersecting_mountains:
+            continue
+        if len(intersecting_mountains) > 1:
+            print("COS SIE POPSULO", intersecting_mountains)
+        intersecting_mountain = intersecting_mountains[0]
+
+        mountain_center_line_points = mountain_chain.line.coords
 
         new_p_first = _move_point_farther_away(mountain_center_line_points[0],
                                                mountain_center_line_points[1],
-                                               mountain.group_poly)
+                                               intersecting_mountain.polygon)
         new_p_last = _move_point_farther_away(mountain_center_line_points[-1],
                                               mountain_center_line_points[-2],
-                                              mountain.group_poly)
+                                              intersecting_mountain.polygon)
 
-        mountain.center_line = LineString([new_p_first] + mountain_center_line_points[1:-1] + [new_p_last])
+        mountain_chain.line = LineString([new_p_first] + mountain_center_line_points[1:-1] + [new_p_last])
 
 
 def _move_point_farther_away(border_point, second_point, poly):
